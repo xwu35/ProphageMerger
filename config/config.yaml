@@ -1,0 +1,15 @@
+# resources: cpu and memory
+resources:
+    big_mem: 128000      
+    big_cpu: 16         
+
+    med_mem: 64000      
+    med_cpu: 8         
+
+    small_mem: 16000      
+    small_cpu: 4  
+
+genomad:
+  sensitivity: 7.5
+
+overlapping_length: 10000

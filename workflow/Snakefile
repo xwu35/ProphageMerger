@@ -1,0 +1,29 @@
+import os
+import pathlib
+
+configfile: os.path.join(workflow.basedir, "..", "config", "config.yaml")
+
+# genome sequence
+SEQUENCE = config["genome_sequence"]
+
+# need the name of the sequence for GeNomad output
+SEQ_NAME = pathlib.Path(SEQUENCE).stem
+
+# directory to save databases
+DATABASE = config["database"]
+
+# directory to save the results
+RESULTS_DIR = config["results_dir"]
+
+# rules
+include: "rules/setup.smk"
+include: "rules/prediction.smk"
+include: "rules/evaluation.smk"
+
+# master target rule
+rule all:
+    input: 
+        os.path.join(RESULTS_DIR, "results", "all_coordinates.txt"),
+        os.path.join(RESULTS_DIR, "results", "final_coordinates.txt"),
+        os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "quality_summary.tsv")
+

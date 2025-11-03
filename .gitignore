@@ -1,0 +1,5 @@
+.DS_Store
+config/.DS_Store
+test_data/.DS_Store
+workflow/.DS_Store
+workflow/**/.DS_Store
