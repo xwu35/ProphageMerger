@@ -76,7 +76,7 @@ python ProphageMerger.py \
 - **output_dir/results/checkv_evaluation/quality_summary.tsv**: Prophage region completeness
 
 
-## Only merge coordinates
+## Merge predicted prophage regions
 
 If the prediction tools have already been executed elsewhere without using this pipeline, and you only need to merge the predicted regions, you can use the `combine_prophage_coordinates.py` script. Detailed usage information can be viewed using the -h or --help flags `python workflow/scripts/combine_prophage_coordinates.py -h`.
 
