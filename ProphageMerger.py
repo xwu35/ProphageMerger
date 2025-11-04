@@ -57,41 +57,46 @@ version = "1.0.0"
 
 def run_prophagemerger(genome_sequence, database, output_dir, dryrun, conda_envs, profile):
 
-          # write run log if it is not a dry run
-          if not dryrun:
-            os.makedirs(output_dir, exist_ok=True)
-            logfile = os.path.join(output_dir, f"{os.path.basename(output_dir)}_run.log")
-            with open(logfile, "w") as log:
-                log.write("================ProphageMerger run log==============\n")
-                log.write(f"Start time: {datetime.now()}\n")
-                log.write(f"ProphageMerger version: {version}\n")
-                log.write(f"Genome sequence: {genome_sequence}")
+    # get snakefile path
+    script_dir=os.path.dirname(os.path.abspath(__file__))
+    snakefile=os.path.join(script_dir, "workflow", "Snakefile")
 
-          cmd = (
-            'snakemake --snakefile workflow/Snakefile '
-                '--use-conda --conda-frontend mamba '
-                '{conda_envs} '
-                '--profile {profile} --rerun-incomplete ' 
-                '--printshellcmds --nolock --show-failed-logs '
-                '{dryrun} '
-                '--config genome_sequence={seq} '
-                    'database={db} '
-                    'results_dir={results}'
-          ).format(
+    # write run log if it is not a dry run
+    if not dryrun:
+        os.makedirs(output_dir, exist_ok=True)
+        logfile = os.path.join(output_dir, f"{os.path.basename(output_dir)}_run.log")
+        with open(logfile, "w") as log:
+            log.write("================ProphageMerger run log==============\n")
+            log.write(f"Start time: {datetime.now()}\n")
+            log.write(f"ProphageMerger version: {version}\n")
+            log.write(f"Genome sequence: {genome_sequence}")
+
+    cmd = (
+        'snakemake --snakefile {snakefile} '
+        '--use-conda --conda-frontend mamba '
+        '{conda_envs} '
+        '--profile {profile} --rerun-incomplete ' 
+        '--printshellcmds --nolock --show-failed-logs '
+        '{dryrun} '
+        '--config genome_sequence={seq} '
+        'database={db} '
+        'results_dir={results}'
+        ).format(
+            snakefile=snakefile,
             conda_envs='' if conda_envs=='' else '--conda-prefix {}'.format(conda_envs),
             profile=profile,
             dryrun='--dryrun' if dryrun else '',
             seq=genome_sequence,
             db=database,
             results=output_dir
-          )
+            )
 
-          # run snakemake with command-line config
-          try:
-            subprocess.run(cmd, check=True, shell=True)
-          except subprocess.CalledProcessError:
-            print("Snakemake failed. see log for details.", file=sys.stderr)
-            sys.exit(1)
+    # run snakemake with command-line config
+    try:
+        subprocess.run(cmd, check=True, shell=True)
+    except subprocess.CalledProcessError:
+        print("Snakemake failed. see log for details.", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
-  run_prophagemerger()
+    run_prophagemerger()
