@@ -73,7 +73,7 @@ python ProphageMerger.py \
 - **output_dir/results/final_coordinates.txt**: Maximized prophage coordinates after merging
 - **output_dir/results/final_coordinates_0-based.bed**: Same as final_coordinates.txt, but this version has been converted to 0-based coordinates. It can be used as input for [VTPhageFinder](https://github.com/xwu35/VTPhageFinder)
 - **output_dir/results/prophage_region_sequences.fa**: Sequences of the final prophage regions
-- **output_dir/results/checkv_evaluation/quality_summary.tsv**: Prophage region completeness
+- **output_dir/results/checkv_evaluation/quality_summary.tsv**: Prophage region quality
 
 
 ## Merge predicted prophage regions
