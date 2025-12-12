@@ -9,7 +9,6 @@ from io import StringIO
     context_settings=dict(help_option_names=['-h', '--help'], max_content_width=150),
     help='Usage:\n python combine_prophage_coordinates_arguments.py --virsorter2 <VirSorter2 boundary file> '
     '--checkv <CheckV provirus fasta> --genomad <GeNomad provirus file> --vibrant <Vibrant prophage file> '
-    '--overlapping_length <Overlapping length cutoff> '
     '--all_coordinates <Output all coordinates> '
     '--final_coordinates <Output maximized coordiantes> '
     '--bed_file <Output maximized 0-based coordiantes>'
@@ -39,13 +38,6 @@ from io import StringIO
     help='Vibrant prophage file'
 )
 @click.option(
-    '--overlapping_length',
-    default=10000,
-    type=int,
-    show_default=True,
-    help='The overlapping length',
-)
-@click.option(
     '--all_coordinates',
     default="all_coordinates.txt",
     type=click.File("w"),
@@ -68,8 +60,7 @@ from io import StringIO
 )
 
 def process_data(virsorter2, checkv, genomad, vibrant, 
-                overlapping_length, all_coordinates, 
-                final_coordinates, bed_file):
+                all_coordinates, final_coordinates, bed_file):
 
     # VirSorter2 + CheckV
     # read in virsorter2 boundary table
@@ -130,6 +121,8 @@ def process_data(virsorter2, checkv, genomad, vibrant,
 
     # Vibrant
     df_vibrant = pd.read_table(vibrant)[['scaffold', 'fragment', 'nucleotide start','nucleotide stop']]
+    # unlike the others, vibrant doesn't remove the space and texts after space in the seq headers
+    df_vibrant['scaffold'] = df_vibrant['scaffold'].str.split().str[0]
     df_vibrant['method'] = 'Vibrant'
     df_vibrant.columns = ['chr_name','seq_name','start','end', 'method']
     df_vibrant[['chr_name']] = df_vibrant[['chr_name']].astype(str)
@@ -147,17 +140,16 @@ def process_data(virsorter2, checkv, genomad, vibrant,
         # save the combined results
         combined_df.to_csv(all_coordinates, sep='\t', index=False, header=True)
 
-        # merge the regions if the regions are within the threhold
-        threshold = overlapping_length
-        # calculate the difference between consecutive rows
-        # the first row will have NaN value, so fill it with a value above the threshold to ensure it starts a new region
-        combined_df['start_diff'] = combined_df.groupby('chr_name')['start'].diff().fillna(threshold + 1)
-        combined_df['end_diff'] = combined_df.groupby('chr_name')['end'].diff().fillna(threshold + 1)
-        # add a condition column, if the start_diff and end_diff are both > threshold, then output True (a new region), otherwise False
-        combined_df['condition'] = (combined_df['start_diff'] > threshold) & (combined_df['end_diff'] > threshold)
+        # merge overlapping regions
+        # get the max of the previous rows within each chromosome; the first row will have NaN value, so fill it with 0
+        combined_df['previous_end_max'] = combined_df.groupby('chr_name')['end'].shift(1).groupby(combined_df['chr_name']).cummax().fillna(0)
+        # calculate the difference between row's start corrdinates and the previous rows max end coordinates to see if they overlap
+        combined_df['diff'] = combined_df['start'] - combined_df['previous_end_max']
+        # add a condition column, if the diff is > 0, then output True (a new region), otherwise False
+        combined_df['condition'] = combined_df['diff'] > 0
         # use cumsum to create region identifiers
         combined_df['region_id'] = combined_df.groupby('chr_name')['condition'].cumsum()
-        # find the minimum value of "start" coordinates and maximum value of "end" coordiantes for each region
+        # find the minimum value of start coordinates and maximum value of end coordiantes for each region
         results = combined_df.groupby(['chr_name','region_id']).agg(
             min_start=('start', 'min'),
             max_end=('end', 'max')
