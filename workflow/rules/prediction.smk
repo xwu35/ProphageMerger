@@ -4,7 +4,7 @@ rule virsorter2:
     """
     input: 
         seq=SEQUENCE,
-        done=os.path.join(DATABASE, "virsorter2_db", "Done_all_setup")
+        done=os.path.join(dir["db"], "virsorter2_db", "Done_all_setup")
     output:
         virsorter2_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "virsorter2_output")),
         fasta_file=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-combined.fa"),
@@ -32,13 +32,12 @@ rule checkv_after_virsorter2:
     """
     input: 
         fasta_file=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-combined.fa"),
-        done=os.path.join(DATABASE, "checkv-db-v1.5", ".done")
+        done=os.path.join(dir["db"], "checkv-db-v1.5", ".done")
     output:
         checkv_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2")),
-        #summary=os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2", "quality_summary.tsv"),
         provirus=os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2", "proviruses.fna")
     params:
-        database=os.path.join(DATABASE, "checkv-db-v1.5")
+        database=os.path.join(dir["db"], "checkv-db-v1.5")
     threads:
         config["resources"]["small_cpu"]
     resources:  
@@ -61,12 +60,12 @@ rule genomad:
     """
     input: 
         seq=SEQUENCE,
-        done=os.path.join(DATABASE, "genomad_db", ".done")
+        done=os.path.join(dir["db"], "genomad_db", ".done")
     output:
         genomad_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "genomad_output")),
         provirus=os.path.join(RESULTS_DIR, "predictions", "genomad_output", SEQ_NAME + "_find_proviruses", SEQ_NAME + "_provirus.tsv")
     params:
-        database=os.path.join(DATABASE, "genomad_db"),
+        database=os.path.join(dir["db"], "genomad_db"),
         sensitivity=config["genomad"]["sensitivity"]
     threads:
         config["resources"]["big_cpu"]
@@ -91,12 +90,12 @@ rule vibrant:
     """
     input: 
         seq=SEQUENCE,
-        done=os.path.join(DATABASE, "vibrant_db", ".done")
+        done=os.path.join(dir["db"], "vibrant_db", ".done")
     output:
         vibrant_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "vibrant_output")),
         done=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", ".done")
     params:
-        database=os.path.join(DATABASE, "vibrant_db", "databases"),
+        database=os.path.join(dir["db"], "vibrant_db", "databases"),
         prophage=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", "VIBRANT_" + SEQ_NAME, "VIBRANT_results_" + SEQ_NAME, "VIBRANT_integrated_prophage_coordinates_" + SEQ_NAME + ".tsv")
     threads:
         config["resources"]["med_cpu"]
@@ -132,8 +131,7 @@ rule combine_prophage_coordinates:
         bed_file=os.path.join(RESULTS_DIR, "results", "final_coordinates_0-based.bed")
     params:
         script=os.path.join(dir["scripts"], "combine_prophage_coordinates.py"),
-        vibrant_prophage=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", "VIBRANT_" + SEQ_NAME, "VIBRANT_results_" + SEQ_NAME, "VIBRANT_integrated_prophage_coordinates_" + SEQ_NAME + ".tsv"),
-        length=config["overlapping_length"]
+        vibrant_prophage=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", "VIBRANT_" + SEQ_NAME, "VIBRANT_results_" + SEQ_NAME, "VIBRANT_integrated_prophage_coordinates_" + SEQ_NAME + ".tsv")
     shell:
         """
         python {params.script} \
@@ -141,7 +139,6 @@ rule combine_prophage_coordinates:
             --checkv {input.checkv_provirus} \
             --genomad {input.genomad_provirus} \
             --vibrant {params.vibrant_prophage} \
-            --overlapping_length {params.length} \
             --all_coordinates {output.all_coordinates} \
             --final_coordinates {output.final_coordinates} \
             --bed_file {output.bed_file}

@@ -32,7 +32,7 @@ rule prophage_evaluation:
         checkv_outdir=directory(os.path.join(RESULTS_DIR, "results", "checkv_evaluation")),
         summary=os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "quality_summary.tsv")
     params:
-        database=os.path.join(DATABASE, "checkv-db-v1.5")
+        database=os.path.join(dir["db"], "checkv-db-v1.5")
     threads:
         config["resources"]["small_cpu"]
     resources:  

@@ -11,5 +11,3 @@ resources:
 
 genomad:
   sensitivity: 7.5
-
-overlapping_length: 10000

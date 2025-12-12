@@ -1,14 +1,15 @@
-# SET UP WORKFLOW 
+# SET UP DIRECTORY
 dir = dict()
 dir["env"]     = os.path.join(workflow.basedir, "envs")
 dir["scripts"] = os.path.join(workflow.basedir, "scripts")
+dir["db"]      = os.path.join(workflow.basedir, "..", "db")
 
 # DOWNLOAD DATABASES
 rule download_virsorter2_db:
     output:
-        os.path.join(DATABASE, "virsorter2_db", "Done_all_setup")
+        os.path.join(dir["db"], "virsorter2_db", "Done_all_setup")
     params:
-        outdir=os.path.join(DATABASE, "virsorter2_db")
+        outdir=os.path.join(dir["db"], "virsorter2_db")
     threads:
         config["resources"]["small_cpu"]
     resources:  
@@ -22,9 +23,9 @@ rule download_virsorter2_db:
 
 rule download_checkv_db:
     output:
-        os.path.join(DATABASE, "checkv-db-v1.5", ".done")
+        os.path.join(dir["db"], "checkv-db-v1.5", ".done")
     params:
-        outdir=DATABASE
+        outdir=dir["db"]
     threads:
         config["resources"]["small_cpu"]
     resources:  
@@ -39,9 +40,9 @@ rule download_checkv_db:
 
 rule download_genomad_db:
     output:
-        os.path.join(DATABASE, "genomad_db", ".done")
+        os.path.join(dir["db"], "genomad_db", ".done")
     params:
-        outdir=DATABASE
+        outdir=dir["db"]
     conda:
         os.path.join(dir["env"], "genomad.yml")
     shell:
@@ -52,9 +53,9 @@ rule download_genomad_db:
 
 rule download_vibrant_db:
     output:
-        os.path.join(DATABASE, "vibrant_db", ".done")
+        os.path.join(dir["db"], "vibrant_db", ".done")
     params:
-        outdir=os.path.join(DATABASE, "vibrant_db")
+        outdir=os.path.join(dir["db"], "vibrant_db")
     conda:
         os.path.join(dir["env"], "vibrant.yml")
     shell:

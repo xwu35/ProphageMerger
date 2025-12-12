@@ -9,9 +9,6 @@ SEQUENCE = config["genome_sequence"]
 # need the name of the sequence for GeNomad output
 SEQ_NAME = pathlib.Path(SEQUENCE).stem
 
-# directory to save databases
-DATABASE = config["database"]
-
 # directory to save the results
 RESULTS_DIR = config["results_dir"]
 

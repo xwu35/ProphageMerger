@@ -5,9 +5,9 @@
 #SBATCH --output=slurm-%x.%j.out
 #SBATCH --error=slurm-%x.%j.err
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=xiaofen
+#SBATCH --mail-user=<your_email_address>
 
 eval "$(conda shell.bash hook)"
 conda activate snakemake
 
-python ProphageMerger.py -g test_data/genome_sequences.fa -o test_output
+ProphageMerger.py --test_run
