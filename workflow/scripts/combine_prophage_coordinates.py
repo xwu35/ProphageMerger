@@ -141,6 +141,9 @@ def process_data(virsorter2, checkv, genomad, vibrant,
         combined_df.to_csv(all_coordinates, sep='\t', index=False, header=True)
 
         # merge overlapping regions
+        # convert the start and end columns to a general numeric type. This is to deal with empty results from the predictions.
+        cols = ['start', 'end']
+        combined_df[cols] = combined_df[cols].apply(pd.to_numeric)
         # get the max of the previous rows within each chromosome; the first row will have NaN value, so fill it with 0
         combined_df['previous_end_max'] = combined_df.groupby('chr_name')['end'].shift(1).groupby(combined_df['chr_name']).cummax().fillna(0)
         # calculate the difference between row's start corrdinates and the previous rows max end coordinates to see if they overlap
