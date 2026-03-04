@@ -1,9 +1,9 @@
 rule extract_prophage_region:
     input: 
-        seq=SEQUENCE,
-        bed_file=os.path.join(RESULTS_DIR, "results", "final_coordinates_0-based.bed")
+        seq=lambda wildcards: SEQUENCE_MAP[wildcards.genome],
+        bed_file=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates_0-based.bed")
     output:
-        extracted_seq=os.path.join(RESULTS_DIR, "results", "prophage_region_sequences.fa")
+        extracted_seq=os.path.join(RESULTS_DIR, "results", "{genome}_prophage_region_sequences.fa")
     threads:
         config["resources"]["small_cpu"]
     resources:  
@@ -27,10 +27,10 @@ rule prophage_evaluation:
     Prophage region completeness evaluation using CheckV
     """
     input: 
-        extracted_seq=os.path.join(RESULTS_DIR, "results", "prophage_region_sequences.fa")
+        extracted_seq=os.path.join(RESULTS_DIR, "results", "{genome}_prophage_region_sequences.fa")
     output:
-        checkv_outdir=directory(os.path.join(RESULTS_DIR, "results", "checkv_evaluation")),
-        summary=os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "quality_summary.tsv")
+        checkv_outdir=directory(os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "{genome}")),
+        summary=os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "{genome}", "quality_summary.tsv")
     params:
         database=os.path.join(dir["db"], "checkv-db-v1.5")
     threads:

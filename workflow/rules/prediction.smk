@@ -1,14 +1,25 @@
+rule rename_genome_seq:
+    """rename genome sequences to make sure geNomad and Vibrant work properly"""
+    input:
+        lambda wildcards: SEQUENCE_MAP[wildcards.genome]
+    output:
+        os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa")
+    shell:
+        """
+        ln -s {input} {output} 
+        """
+
 rule virsorter2:
     """
-    run VirSorter2 using default parameters
+    Prophage prediction using VirSorter2 with default parameters
     """
     input: 
-        seq=SEQUENCE,
+        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
         done=os.path.join(dir["db"], "virsorter2_db", "Done_all_setup")
     output:
-        virsorter2_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "virsorter2_output")),
-        fasta_file=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-combined.fa"),
-        boundary=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-boundary.tsv")
+        virsorter2_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output")),
+        fasta_file=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-combined.fa"),
+        boundary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-boundary.tsv")
     threads:
         config["resources"]["med_cpu"]
     resources:  
@@ -31,11 +42,11 @@ rule checkv_after_virsorter2:
     run CheckV after VirSorter2
     """
     input: 
-        fasta_file=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-combined.fa"),
+        fasta_file=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-combined.fa"),
         done=os.path.join(dir["db"], "checkv-db-v1.5", ".done")
     output:
-        checkv_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2")),
-        provirus=os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2", "proviruses.fna")
+        checkv_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "checkv_virsorter2")),
+        provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "checkv_virsorter2", "proviruses.fna")
     params:
         database=os.path.join(dir["db"], "checkv-db-v1.5")
     threads:
@@ -59,11 +70,11 @@ rule genomad:
     Prophage prediction using geNomad's find_provirus module
     """
     input: 
-        seq=SEQUENCE,
+        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
         done=os.path.join(dir["db"], "genomad_db", ".done")
     output:
-        genomad_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "genomad_output")),
-        provirus=os.path.join(RESULTS_DIR, "predictions", "genomad_output", SEQ_NAME + "_find_proviruses", SEQ_NAME + "_provirus.tsv")
+        genomad_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output")),
+        provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output", "{genome}_find_proviruses", "{genome}_provirus.tsv")
     params:
         database=os.path.join(dir["db"], "genomad_db"),
         sensitivity=config["genomad"]["sensitivity"]
@@ -89,14 +100,14 @@ rule vibrant:
     Prophage prediction using Vibrant with default parameters
     """
     input: 
-        seq=SEQUENCE,
+        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
         done=os.path.join(dir["db"], "vibrant_db", ".done")
     output:
-        vibrant_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "vibrant_output")),
-        done=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", ".done")
+        vibrant_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output")),
+        done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", ".done")
     params:
         database=os.path.join(dir["db"], "vibrant_db", "databases"),
-        prophage=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", "VIBRANT_" + SEQ_NAME, "VIBRANT_results_" + SEQ_NAME, "VIBRANT_integrated_prophage_coordinates_" + SEQ_NAME + ".tsv")
+        prophage=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", "VIBRANT_{genome}", "VIBRANT_results_{genome}", "VIBRANT_integrated_prophage_coordinates_{genome}.tsv")
     threads:
         config["resources"]["med_cpu"]
     resources:  
@@ -120,18 +131,18 @@ rule combine_prophage_coordinates:
     Combine all predicted prophage coordinates
     """
     input: 
-        vir2_boundary=os.path.join(RESULTS_DIR, "predictions", "virsorter2_output", "final-viral-boundary.tsv"),
-        checkv_provirus=os.path.join(RESULTS_DIR, "predictions", "checkv_virsorter2", "proviruses.fna"),
-        genomad_provirus=os.path.join(RESULTS_DIR, "predictions", "genomad_output", SEQ_NAME + "_find_proviruses", SEQ_NAME + "_provirus.tsv"),
+        vir2_boundary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-boundary.tsv"),
+        checkv_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "checkv_virsorter2", "proviruses.fna"),
+        genomad_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output", "{genome}_find_proviruses", "{genome}_provirus.tsv"),
         # for tracking
-        done=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", ".done")
+        done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", ".done")
     output:
-        all_coordinates=os.path.join(RESULTS_DIR, "results", "all_coordinates.txt"),
-        final_coordinates=os.path.join(RESULTS_DIR, "results", "final_coordinates.txt"),
-        bed_file=os.path.join(RESULTS_DIR, "results", "final_coordinates_0-based.bed")
+        all_coordinates=os.path.join(RESULTS_DIR, "results", "{genome}_all_coordinates.txt"),
+        final_coordinates=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates.txt"),
+        bed_file=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates_0-based.bed")
     params:
         script=os.path.join(dir["scripts"], "combine_prophage_coordinates.py"),
-        vibrant_prophage=os.path.join(RESULTS_DIR, "predictions", "vibrant_output", "VIBRANT_" + SEQ_NAME, "VIBRANT_results_" + SEQ_NAME, "VIBRANT_integrated_prophage_coordinates_" + SEQ_NAME + ".tsv")
+        vibrant_prophage=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", "VIBRANT_{genome}", "VIBRANT_results_{genome}", "VIBRANT_integrated_prophage_coordinates_{genome}.tsv"),
     shell:
         """
         python {params.script} \

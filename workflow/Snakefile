@@ -1,16 +1,18 @@
-import os
-import pathlib
+from scripts.common import parse_names_and_sequences
 
 configfile: os.path.join(workflow.basedir, "..", "config", "config.yaml")
 
-# genome sequence
-SEQUENCE = config["genome_sequence"]
+# path to metadata
+METADATA = config["genome_info"]
 
-# need the name of the sequence for GeNomad output
-SEQ_NAME = pathlib.Path(SEQUENCE).stem
+# directory to sequences
+SEQDIR = config["sequence_dir"]
 
 # directory to save the results
 RESULTS_DIR = config["results_dir"]
+
+# get genome names and sequences path
+GENOME, SEQUENCE_MAP = parse_names_and_sequences(METADATA, SEQDIR)
 
 # rules
 include: "rules/setup.smk"
@@ -20,7 +22,7 @@ include: "rules/evaluation.smk"
 # master target rule
 rule all:
     input: 
-        os.path.join(RESULTS_DIR, "results", "all_coordinates.txt"),
-        os.path.join(RESULTS_DIR, "results", "final_coordinates.txt"),
-        os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "quality_summary.tsv")
+        expand(os.path.join(RESULTS_DIR, "results", "{genome}_all_coordinates.txt"), genome=GENOME),
+        expand(os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates.txt"), genome=GENOME),
+        expand(os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "{genome}", "quality_summary.tsv"), genome=GENOME)
 

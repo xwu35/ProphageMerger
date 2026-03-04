@@ -82,7 +82,8 @@ A dry-run can be performed by specifing the `--dryrun` flag
 conda activate snakemake
 
 ProphageMerger.py \
-     -g /path/to/your/genome/sequence/fasta \
+     --genome_info /path/to/your/genome_info_table \
+     --sequence_dir /path/to/your/directory/containing/sequences \
      -o /name/your/output/dir
 ```
 
@@ -90,11 +91,11 @@ ProphageMerger.py \
 
 |                     Filename                       |                     Description                    |
 |----------------------------------------------------|----------------------------------------------------|
-| `results/all_coordinates.txt`                      | Predicted prophage coordinates from all tools      |
-| `results/final_coordinates.txt`                    | Maximized prophage coordinates after merging       | 
-| `results/final_coordinates_0-based.bed`            | Same as final_coordinates.txt, but this version has been converted to 0-based coordinates. It can be used as input for [VTPhageFinder](https://github.com/xwu35/VTPhageFinder)                                                  |
-| `results/prophage_region_sequences.fa`             | Sequences of the final prophage regions            |
-| `results/checkv_evaluation/quality_summary.tsv`    | Prophage region quality                            |
+| `results/{genome}_all_coordinates.txt`                      | Predicted prophage coordinates from all tools      |
+| `results/{genome}_final_coordinates.txt`                    | Maximized prophage coordinates after merging       | 
+| `results/{genome}_final_coordinates_0-based.bed`            | Same as final_coordinates.txt, but this version has been converted to 0-based coordinates. It can be used as input for [VTPhageFinder](https://github.com/xwu35/VTPhageFinder)                                                  |
+| `results/{genome}_prophage_region_sequences.fa`             | Sequences of the final prophage regions            |
+| `results/checkv_evaluation/{genome}/quality_summary.tsv`    | Prophage region quality                            |
  	
 
 ## Merge predicted prophage regions
