@@ -4,11 +4,14 @@ import click
 import pandas as pd
 from Bio import SeqIO
 from io import StringIO
+import os
 
 @click.command(
     context_settings=dict(help_option_names=['-h', '--help'], max_content_width=150),
     help='Usage:\n python combine_prophage_coordinates_arguments.py --virsorter2 <VirSorter2 boundary file> '
     '--checkv <CheckV provirus fasta> --genomad <GeNomad provirus file> --vibrant <Vibrant prophage file> '
+    '--cenote_prune <Cenote-Taker3 prune summary file> --cenote_virus <Cenote-Taker3 virus summary file> '
+    '--phispy <PhiSpy prophage file> '
     '--all_coordinates <Output all coordinates> '
     '--final_coordinates <Output maximized coordiantes> '
     '--bed_file <Output maximized 0-based coordiantes>'
@@ -38,6 +41,24 @@ from io import StringIO
     help='Vibrant prophage file'
 )
 @click.option(
+    '--cenote_prune',
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    help='Cenote-Taker3 prune summary file'
+)
+@click.option(
+    '--cenote_virus',
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    help='Cenote-Taker3 virus summary file'
+)
+@click.option(
+    '--phispy',
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    help='PhiSpy prophage file'
+)
+@click.option(
     '--all_coordinates',
     default="all_coordinates.txt",
     type=click.File("w"),
@@ -59,7 +80,7 @@ from io import StringIO
     help=('Output maximized 0-based coordinates')
 )
 
-def process_data(virsorter2, checkv, genomad, vibrant, 
+def process_data(virsorter2, checkv, genomad, vibrant, cenote_prune, cenote_virus, phispy,
                 all_coordinates, final_coordinates, bed_file):
 
     # VirSorter2 + CheckV
@@ -81,7 +102,7 @@ def process_data(virsorter2, checkv, genomad, vibrant,
             # split the second parts by / to get the coordinates and length
             header_pos = header_parts[1].split('/')
             # assign column names to the split parts
-            chr_name=header_parts[0].rsplit('||', 1)[0].strip()
+            chr_name = header_parts[0].rsplit('||', 1)[0].strip()
             seq_name = header_parts[0].rsplit('_', 1)[0].strip()
             seq_id = header_parts[0].rsplit('_', 1)[1].strip()
             input_seq_len = header_pos[1].strip()
@@ -127,8 +148,36 @@ def process_data(virsorter2, checkv, genomad, vibrant,
     df_vibrant.columns = ['chr_name','seq_name','start','end', 'method']
     df_vibrant[['chr_name']] = df_vibrant[['chr_name']].astype(str)
 
+    # Cenote-Taker3 (need the virus summary to get the contig input name)
+    df_cenote_summary = pd.read_table(cenote_virus)
+    df_cenote_prune = pd.read_table(cenote_prune)
+    # Cenote-Taker3 uses 0-based coordinates, change it to 1-based to be consistent with the others
+    df_cenote_prune['chunk_start_new'] = df_cenote_prune['chunk_start'] + 1
+    # combine contig and chunk_name columns to match summary table
+    df_cenote_prune['seq_name'] = df_cenote_prune['contig'] + '@' + df_cenote_prune['chunk_name']
+    # merge the two dfs
+    df_merged_cenote = pd.merge(df_cenote_prune, df_cenote_summary, left_on = 'seq_name', right_on = 'contig', how = 'left')[["input_name", "seq_name", "chunk_start_new", "chunk_stop"]]
+    df_merged_cenote['method'] = 'Cenote-Taker3'
+    df_merged_cenote.columns = ['chr_name','seq_name','start','end', 'method']
+    df_merged_cenote[['chr_name']] = df_merged_cenote[['chr_name']].astype(str)
+
+    # read in the prophage table from phispy and select the first four columns: Prophage number, The contig upon which the prophage resides, The start location of the prophage, The stop location of the prophage 
+    # phipy output empty file without headers when there is no prophage identified, need to handle the empty file
+    if os.path.getsize(phispy) > 0:
+        df_phispy = pd.read_table(phispy, header=None, usecols=range(4))
+        df_phispy.columns = ['seq_name','chr_name', 'start_orig','end']
+        # phispy uses 0-based coordinates, convert to 1-based
+        df_phispy['start'] = df_phispy['start_orig'] + 1
+        df_phispy['method'] = 'PhiSpy'
+        df_phispy[['chr_name']] = df_phispy[['chr_name']].astype(str)
+        df_phispy_selected = df_phispy[['chr_name', 'seq_name', 'start','end', 'method']]
+        df_phispy_selected
+    else:
+        df_phispy_selected = pd.DataFrame(columns=['chr_name', 'seq_name', 'start','end', 'method'])
+        df_phispy_selected[['chr_name']] = df_phispy_selected[['chr_name']].astype(str) # may not need this
+
     # Combine all coordinates
-    combined_df = pd.concat([df_vir_checkv, df_genomad, df_vibrant]).sort_values(by=['chr_name','start'])
+    combined_df = pd.concat([df_vir_checkv, df_genomad, df_vibrant, df_merged_cenote, df_phispy_selected]).sort_values(by=['chr_name','start'])
 
     if combined_df.empty:
         empty_df = pd.read_csv(StringIO("""NO PROPHAGE REGIONS FOUND"""))

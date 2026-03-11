@@ -1,12 +1,13 @@
-rule rename_genome_seq:
-    """rename genome sequences to make sure geNomad and Vibrant work properly"""
-    input:
+rule extract_chromosome_seq_for_prediction:
+    input: 
         lambda wildcards: SEQUENCE_MAP[wildcards.genome]
     output:
-        os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa")
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
+    params:
+        script=os.path.join(dir["scripts"], "extract_longest_sequence.py")
     shell:
         """
-        ln -s {input} {output} 
+        {params.script} -i {input} -o {output.seq}
         """
 
 rule virsorter2:
@@ -14,7 +15,7 @@ rule virsorter2:
     Prophage prediction using VirSorter2 with default parameters
     """
     input: 
-        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"),
         done=os.path.join(dir["db"], "virsorter2_db", "Done_all_setup")
     output:
         virsorter2_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output")),
@@ -70,7 +71,7 @@ rule genomad:
     Prophage prediction using geNomad's find_provirus module
     """
     input: 
-        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"),
         done=os.path.join(dir["db"], "genomad_db", ".done")
     output:
         genomad_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output")),
@@ -100,7 +101,7 @@ rule vibrant:
     Prophage prediction using Vibrant with default parameters
     """
     input: 
-        seq=os.path.join(RESULTS_DIR, "renamed_sequences", "{genome}.fa"),
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"),
         done=os.path.join(dir["db"], "vibrant_db", ".done")
     output:
         vibrant_outdir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output")),
@@ -126,6 +127,111 @@ rule vibrant:
         fi   
         """
 
+rule cenote_taker3:
+    """
+    Prophage prediction using Cenote-Taker3. Dantas lab used this one in their paper, but with v3.2.1
+    """
+    input: 
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
+    output:
+        prune_summary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_prune_summary.tsv"),
+        virus_summary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_virus_summary.tsv"),
+        done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", ".done")
+    params:
+        tmp_dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3_tmp")),
+        dst_dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3")),
+        database=config["cenote_taker3"]["database"],
+        settings=config["cenote_taker3"]["settings"] 
+    threads:
+        config["resources"]["med_cpu"]
+    resources:  
+        mem_mb=config["resources"]["small_mem"]
+    #conda:
+        #os.path.join(dir["env"], "cenote-taker3.yml")
+    shell:
+        """
+        {CT3}
+
+        if [[ -s {input.seq} ]]; then
+            cenotetaker3 -c {input.seq} \
+                -r cenote_taker3 \
+                -t {threads} \
+                -wd {params.tmp_dir} \
+                --cenote-dbs {params.database} \
+                {params.settings}  && 
+            mv {params.tmp_dir}/cenote_taker3/* {params.dst_dir} &&
+            rm -r {params.tmp_dir} &&
+            touch {output.done}
+        else
+            echo "Sequence file is empty"
+            touch {output.summary}
+            touch {output.done}
+        fi   
+        """
+
+rule prokka:
+    """
+    Prokka annotation since PhiSpy uses the .gbk from prokka
+    """
+    input: 
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
+    output:
+        gbk=os.path.join(RESULTS_DIR, "predictions", "{genome}", "prokka_output", "{genome}.gbk")
+    params:
+        dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "prokka_output"))
+    threads:
+        config["resources"]["med_cpu"]
+    resources:  
+        mem_mb=config["resources"]["med_mem"]
+    #conda:
+        #os.path.join(dir["env"], "prokka.yml")
+    shell:
+        """
+        {PROKKA}
+
+        if [[ -s {input.seq} ]]; then
+            prokka \
+                --outdir {params.dir} \
+                --prefix {wildcards.genome} \
+                --cpus {threads} --force \
+                {input.seq}
+        else
+            echo "Sequence file is empty"
+            touch {output.gbk}
+        fi   
+        """
+
+rule phispy:
+    """
+    Prophage prediction using Vibrant with default parameters
+    """
+    input: 
+        gbk=os.path.join(RESULTS_DIR, "predictions", "{genome}", "prokka_output", "{genome}.gbk")
+    output:
+        phispy=os.path.join(RESULTS_DIR, "predictions", "{genome}", "phispy_output", "prophage_coordinates.tsv")
+    params:
+        dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "phispy_output"))
+    threads:
+        config["resources"]["small_cpu"]
+    resources:  
+        mem_mb=config["resources"]["small_mem"]
+    #conda:
+        #os.path.join(dir["env"], "phispy.yml")
+    shell:
+        """
+        {PHISPY}
+
+        if [[ -s {input.gbk} ]]; then
+            PhiSpy.py \
+                {input.gbk} \
+                -o {params.dir} \
+                --threads {threads}
+        else
+            echo "Sequence file is empty"
+            touch {output.phispy} 
+        fi   
+        """
+
 rule combine_prophage_coordinates:
     """
     Combine all predicted prophage coordinates
@@ -134,8 +240,12 @@ rule combine_prophage_coordinates:
         vir2_boundary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-boundary.tsv"),
         checkv_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "checkv_virsorter2", "proviruses.fna"),
         genomad_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output", "{genome}_find_proviruses", "{genome}_provirus.tsv"),
+        cenote_prune=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_prune_summary.tsv"),
+        cenote_virus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_virus_summary.tsv"),
+        phispy=os.path.join(RESULTS_DIR, "predictions", "{genome}", "phispy_output", "prophage_coordinates.tsv"),
         # for tracking
-        done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", ".done")
+        vibrant_done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", ".done"),
+        ct3_done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", ".done")
     output:
         all_coordinates=os.path.join(RESULTS_DIR, "results", "{genome}_all_coordinates.txt"),
         final_coordinates=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates.txt"),
@@ -150,6 +260,9 @@ rule combine_prophage_coordinates:
             --checkv {input.checkv_provirus} \
             --genomad {input.genomad_provirus} \
             --vibrant {params.vibrant_prophage} \
+            --cenote_prune {input.cenote_prune} \
+            --cenote_virus {input.cenote_virus} \
+            --phispy {input.phispy} \
             --all_coordinates {output.all_coordinates} \
             --final_coordinates {output.final_coordinates} \
             --bed_file {output.bed_file}
