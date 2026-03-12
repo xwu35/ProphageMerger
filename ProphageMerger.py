@@ -32,7 +32,7 @@ def validate_test_run(ctx, param, value):
 @click.option("-s",
     '--sequence_dir',
     callback=validate_test_run,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+    type=click.Path(exists=True, dir_okay=True, readable=True, resolve_path=True),
     help='Path to directory containing genome sequences (required unless --test_run is used)'
 )
 @click.option("-o",
