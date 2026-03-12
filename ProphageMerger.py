@@ -22,14 +22,14 @@ def validate_test_run(ctx, param, value):
     help='Usage:\n ProphageMerger.py '
     '--genome_info <genome metadata> --sequence_dir <genome sequences> -o <output directory>'
 )
-@click.option("-i",
+@click.option("-g",
     '--genome_info',
     callback=validate_test_run,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
     help='Genome information table (tab separated).' 
     ' The table must contain two columns (genome, seq_name), (required unless --test_run is used)'
 )
-@click.option("-g",
+@click.option("-s",
     '--sequence_dir',
     callback=validate_test_run,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
