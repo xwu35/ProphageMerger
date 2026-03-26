@@ -7,7 +7,23 @@ rule extract_chromosome_seq_for_prediction:
         script=os.path.join(dir["scripts"], "extract_longest_sequence.py")
     shell:
         """
-        {params.script} -i {input} -o {output.seq}
+        {params.script} -i {input} -n {wildcards.genome} -o {output.seq}
+        """
+
+rule get_chromosome_length:
+    """
+    Get the length of chromosome sequences
+    """
+    input:
+        expand(os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"), genome=GENOME)
+    output:
+        os.path.join(RESULTS_DIR, "extracted_chromosome", "chromosome_length.txt")
+    conda:
+        os.path.join(dir["env"], "seqkit.yml")
+    shell:
+        """
+        # DON'T NEED TO DEAL WITH EMPTY FASTA, seqkit WILL JUST OUTPUT HEADER
+        seqkit fx2tab --length --name --header-line {input} > {output}
         """
 
 rule virsorter2:
@@ -134,8 +150,7 @@ rule cenote_taker3:
     input: 
         seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
     output:
-        prune_summary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_prune_summary.tsv"),
-        virus_summary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_virus_summary.tsv"),
+        # cenote-taker3 doesn't output summary files if no viruses were found, so cannot track summary files
         done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", ".done")
     params:
         tmp_dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3_tmp")),
@@ -164,14 +179,13 @@ rule cenote_taker3:
             touch {output.done}
         else
             echo "Sequence file is empty"
-            touch {output.summary}
             touch {output.done}
         fi   
         """
 
 rule prokka:
     """
-    Prokka annotation since PhiSpy uses the .gbk from prokka
+    Prokka annotation to produce the .gbk for PhiSpy
     """
     input: 
         seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
@@ -240,8 +254,6 @@ rule combine_prophage_coordinates:
         vir2_boundary=os.path.join(RESULTS_DIR, "predictions", "{genome}", "virsorter2_output", "final-viral-boundary.tsv"),
         checkv_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "checkv_virsorter2", "proviruses.fna"),
         genomad_provirus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "genomad_output", "{genome}_find_proviruses", "{genome}_provirus.tsv"),
-        cenote_prune=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_prune_summary.tsv"),
-        cenote_virus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_virus_summary.tsv"),
         phispy=os.path.join(RESULTS_DIR, "predictions", "{genome}", "phispy_output", "prophage_coordinates.tsv"),
         # for tracking
         vibrant_done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", ".done"),
@@ -253,17 +265,55 @@ rule combine_prophage_coordinates:
     params:
         script=os.path.join(dir["scripts"], "combine_prophage_coordinates.py"),
         vibrant_prophage=os.path.join(RESULTS_DIR, "predictions", "{genome}", "vibrant_output", "VIBRANT_{genome}", "VIBRANT_results_{genome}", "VIBRANT_integrated_prophage_coordinates_{genome}.tsv"),
+        cenote_prune=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_prune_summary.tsv"),
+        cenote_virus=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", "cenote_taker3_virus_summary.tsv")
     shell:
         """
-        python {params.script} \
-            --virsorter2 {input.vir2_boundary} \
-            --checkv {input.checkv_provirus} \
-            --genomad {input.genomad_provirus} \
-            --vibrant {params.vibrant_prophage} \
-            --cenote_prune {input.cenote_prune} \
-            --cenote_virus {input.cenote_virus} \
-            --phispy {input.phispy} \
-            --all_coordinates {output.all_coordinates} \
-            --final_coordinates {output.final_coordinates} \
-            --bed_file {output.bed_file}
+        # if cenote_prune file exists
+        if [[ -f {params.cenote_prune} ]]; then
+            python {params.script} \
+                --virsorter2 {input.vir2_boundary} \
+                --checkv {input.checkv_provirus} \
+                --genomad {input.genomad_provirus} \
+                --vibrant {params.vibrant_prophage} \
+                --phispy {input.phispy} \
+                --cenote_prune {params.cenote_prune} \
+                --cenote_virus {params.cenote_virus} \
+                --all_coordinates {output.all_coordinates} \
+                --final_coordinates {output.final_coordinates} \
+                --bed_file {output.bed_file}
+        else
+            python {params.script} \
+                --virsorter2 {input.vir2_boundary} \
+                --checkv {input.checkv_provirus} \
+                --genomad {input.genomad_provirus} \
+                --vibrant {params.vibrant_prophage} \
+                --phispy {input.phispy} \
+                --all_coordinates {output.all_coordinates} \
+                --final_coordinates {output.final_coordinates} \
+                --bed_file {output.bed_file}
+        fi   
+        """
+
+rule include_nonprophage_coordinates:
+    """
+    use gaps between prophage region as nonprophage coordinates for plotting
+    """
+    input:
+        final_coordinates=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates.txt"),
+        genome_length=os.path.join(RESULTS_DIR, "extracted_chromosome", "chromosome_length.txt")
+    output:
+        os.path.join(RESULTS_DIR, "results", "{genome}_whole_genome_coordinates.txt"),
+    params:
+        script=os.path.join(dir["scripts"], "fill_in_nonprophage_coordinates.py")
+    shell:
+        """
+        if grep -q "NO PROPHAGE REGIONS FOUND" {input.final_coordinates}; then
+            cp {input.final_coordinates} {output}
+        else
+            python {params.script} \
+                -i {input.final_coordinates} \
+                -g {input.genome_length} \
+                -o {output} 
+        fi   
         """
