@@ -1,10 +1,10 @@
-# SET UP DIRECTORY
+#----------- SET UP DIRECTORY
 dir = dict()
 dir["env"]     = os.path.join(workflow.basedir, "envs")
 dir["scripts"] = os.path.join(workflow.basedir, "scripts")
 dir["db"]      = os.path.join(workflow.basedir, "..", "db")
 
-# DOWNLOAD DATABASES
+#----------- DOWNLOAD DATABASES
 rule download_virsorter2_db:
     output:
         os.path.join(dir["db"], "virsorter2_db", "Done_all_setup")
