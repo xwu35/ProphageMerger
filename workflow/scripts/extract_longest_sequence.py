@@ -13,6 +13,11 @@ from Bio import SeqIO
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
     help='Input fasta'
 )
+@click.option('-n',
+    '--name',
+    required=True,
+    help='Name for sequence header'
+)
 @click.option('-o',
     '--output',
     default="longest_sequence.fasta",
@@ -20,15 +25,17 @@ from Bio import SeqIO
     help='Output fasta'
 )
 
-def extract_longest_sequence(input, output):
+def extract_longest_sequence(input, name, output):
 
     longest_seq = None
-    max_length = 0
     
     for record in SeqIO.parse(input, "fasta"):
-        if len(record.seq) > max_length:
-            max_length = len(record.seq)
+        if longest_seq is None or len(record.seq) > len(longest_seq.seq):
             longest_seq = record
+
+    # rename the sequence header
+    longest_seq.id = name
+    longest_seq.description = "" 
 
     # write out the longest sequence
     with open(output, "w") as output_handle:
