@@ -10,8 +10,8 @@ import os
     context_settings=dict(help_option_names=['-h', '--help'], max_content_width=150),
     help='Usage:\n python combine_prophage_coordinates_arguments.py --virsorter2 <VirSorter2 boundary file> '
     '--checkv <CheckV provirus fasta> --genomad <GeNomad provirus file> --vibrant <Vibrant prophage file> '
-    '--cenote_prune <Cenote-Taker3 prune summary file> --cenote_virus <Cenote-Taker3 virus summary file> '
     '--phispy <PhiSpy prophage file> '
+    '--cenote_prune <Cenote-Taker3 prune summary file> --cenote_virus <Cenote-Taker3 virus summary file> '
     '--all_coordinates <Output all coordinates> '
     '--final_coordinates <Output maximized coordiantes> '
     '--bed_file <Output maximized 0-based coordiantes>'
@@ -41,22 +41,22 @@ import os
     help='Vibrant prophage file'
 )
 @click.option(
-    '--cenote_prune',
-    required=True,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help='Cenote-Taker3 prune summary file'
-)
-@click.option(
-    '--cenote_virus',
-    required=True,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help='Cenote-Taker3 virus summary file'
-)
-@click.option(
     '--phispy',
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
     help='PhiSpy prophage file'
+)
+@click.option(
+    '--cenote_prune',
+    default="",
+    show_default=True,
+    help='Cenote-Taker3 prune summary file'
+)
+@click.option(
+    '--cenote_virus',
+    default="",
+    show_default=True,
+    help='Cenote-Taker3 virus summary file'
 )
 @click.option(
     '--all_coordinates',
@@ -148,19 +148,6 @@ def process_data(virsorter2, checkv, genomad, vibrant, cenote_prune, cenote_viru
     df_vibrant.columns = ['chr_name','seq_name','start','end', 'method']
     df_vibrant[['chr_name']] = df_vibrant[['chr_name']].astype(str)
 
-    # Cenote-Taker3 (need the virus summary to get the contig input name)
-    df_cenote_summary = pd.read_table(cenote_virus)
-    df_cenote_prune = pd.read_table(cenote_prune)
-    # Cenote-Taker3 uses 0-based coordinates, change it to 1-based to be consistent with the others
-    df_cenote_prune['chunk_start_new'] = df_cenote_prune['chunk_start'] + 1
-    # combine contig and chunk_name columns to match summary table
-    df_cenote_prune['seq_name'] = df_cenote_prune['contig'] + '@' + df_cenote_prune['chunk_name']
-    # merge the two dfs
-    df_merged_cenote = pd.merge(df_cenote_prune, df_cenote_summary, left_on = 'seq_name', right_on = 'contig', how = 'left')[["input_name", "seq_name", "chunk_start_new", "chunk_stop"]]
-    df_merged_cenote['method'] = 'Cenote-Taker3'
-    df_merged_cenote.columns = ['chr_name','seq_name','start','end', 'method']
-    df_merged_cenote[['chr_name']] = df_merged_cenote[['chr_name']].astype(str)
-
     # read in the prophage table from phispy and select the first four columns: Prophage number, The contig upon which the prophage resides, The start location of the prophage, The stop location of the prophage 
     # phipy output empty file without headers when there is no prophage identified, need to handle the empty file
     if os.path.getsize(phispy) > 0:
@@ -176,15 +163,33 @@ def process_data(virsorter2, checkv, genomad, vibrant, cenote_prune, cenote_viru
         df_phispy_selected = pd.DataFrame(columns=['chr_name', 'seq_name', 'start','end', 'method'])
         df_phispy_selected[['chr_name']] = df_phispy_selected[['chr_name']].astype(str) # may not need this
 
-    # Combine all coordinates
-    combined_df = pd.concat([df_vir_checkv, df_genomad, df_vibrant, df_merged_cenote, df_phispy_selected]).sort_values(by=['chr_name','start'])
+    if cenote_prune and cenote_virus:
+        # Cenote-Taker3 (need the virus summary to get the contig input name)
+        df_cenote_virus = pd.read_table(cenote_virus)
+        # unlike the others, cenote-taker3 doesn't remove the space and texts after space in the seq headers
+        df_cenote_virus['input_name'] = df_cenote_virus['input_name'].str.split().str[0]
+        # prune summary
+        df_cenote_prune = pd.read_table(cenote_prune)
+        # Cenote-Taker3 uses 0-based coordinates, change it to 1-based to be consistent with the others
+        df_cenote_prune['chunk_start_new'] = df_cenote_prune['chunk_start'] + 1
+        # combine contig and chunk_name columns to match summary table
+        df_cenote_prune['seq_name'] = df_cenote_prune['contig'] + '@' + df_cenote_prune['chunk_name']
+        # merge the two dfs
+        df_merged_cenote = pd.merge(df_cenote_prune, df_cenote_virus, left_on = 'seq_name', right_on = 'contig', how = 'left')[["input_name", "seq_name", "chunk_start_new", "chunk_stop"]]
+        df_merged_cenote['method'] = 'Cenote-Taker3'
+        df_merged_cenote.columns = ['chr_name','seq_name','start','end', 'method']
+        df_merged_cenote[['chr_name']] = df_merged_cenote[['chr_name']].astype(str)
+
+        # Combine all coordinates
+        combined_df = pd.concat([df_vir_checkv, df_genomad, df_vibrant, df_merged_cenote, df_phispy_selected]).sort_values(by=['chr_name','start'])
+    else:
+        combined_df = pd.concat([df_vir_checkv, df_genomad, df_vibrant, df_phispy_selected]).sort_values(by=['chr_name','start'])
 
     if combined_df.empty:
         empty_df = pd.read_csv(StringIO("""NO PROPHAGE REGIONS FOUND"""))
         empty_df.to_csv(all_coordinates, index=False)
         empty_df.to_csv(final_coordinates, index=False)
         empty_df.to_csv(bed_file, index=False)
-        
     else:
         # save the combined results
         combined_df.to_csv(all_coordinates, sep='\t', index=False, header=True)
