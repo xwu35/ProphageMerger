@@ -29,5 +29,6 @@ rule all:
     input: 
         expand(os.path.join(RESULTS_DIR, "results", "{genome}_all_coordinates.txt"), genome=GENOME),
         expand(os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates.txt"), genome=GENOME),
+        expand(os.path.join(RESULTS_DIR, "results", "{genome}_whole_genome_coordinates.txt"), genome=GENOME),
         expand(os.path.join(RESULTS_DIR, "results", "checkv_evaluation", "{genome}", "quality_summary.tsv"), genome=GENOME)
 
