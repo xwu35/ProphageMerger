@@ -1,6 +1,6 @@
 rule extract_prophage_region:
     input: 
-        seq=lambda wildcards: SEQUENCE_MAP[wildcards.genome],
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"),
         bed_file=os.path.join(RESULTS_DIR, "results", "{genome}_final_coordinates_0-based.bed")
     output:
         extracted_seq=os.path.join(RESULTS_DIR, "results", "{genome}_prophage_region_sequences.fa")
