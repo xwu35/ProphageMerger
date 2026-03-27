@@ -54,7 +54,7 @@ source ~/.bashrc
 
 ## Usage
 
-ProphageMerger requires a FASTA file of the chromosome sequences, which may consist of a single contig or multiple contigs. Detailed usage information can be viewed using the -h or --help flags `ProphageMerger.py -h`.
+Detailed usage information can be viewed using the -h or --help flags `ProphageMerger.py -h`.
 
 ### Test run
 
@@ -91,6 +91,7 @@ ProphageMerger.py \
 
 |                     Filename                       |                     Description                    |
 |----------------------------------------------------|----------------------------------------------------|
+| `extracted_chromosome/{genome}.fa`                      | The chromosome sequences      |
 | `results/{genome}_all_coordinates.txt`                      | Predicted prophage coordinates from all tools      |
 | `results/{genome}_final_coordinates.txt`                    | Maximized prophage coordinates after merging       | 
 | `results/{genome}_final_coordinates_0-based.bed`            | Same as final_coordinates.txt, but this version has been converted to 0-based coordinates. It can be used as input for [VTPhageFinder](https://github.com/xwu35/VTPhageFinder) or [phage-induction](https://github.com/xwu35/phage-induction)    |
