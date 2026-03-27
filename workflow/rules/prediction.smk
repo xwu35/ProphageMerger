@@ -148,25 +148,24 @@ rule cenote_taker3:
     Prophage prediction using Cenote-Taker3. Dantas lab used this one in their paper, but with v3.2.1
     """
     input: 
-        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa")
+        seq=os.path.join(RESULTS_DIR, "extracted_chromosome", "{genome}.fa"),
+        db_done=os.path.join(dir["db"], "ct3_db", ".done")
     output:
         # cenote-taker3 doesn't output summary files if no viruses were found, so cannot track summary files
         done=os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3", ".done")
     params:
         tmp_dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3_tmp")),
         dst_dir=directory(os.path.join(RESULTS_DIR, "predictions", "{genome}", "cenote_taker3")),
-        database=config["cenote_taker3"]["database"],
+        database=os.path.join(dir["db"], "ct3_db"),
         settings=config["cenote_taker3"]["settings"] 
     threads:
         config["resources"]["med_cpu"]
     resources:  
         mem_mb=config["resources"]["small_mem"]
-    #conda:
-        #os.path.join(dir["env"], "cenote-taker3.yml")
+    conda:
+        os.path.join(dir["env"], "cenote.yml")
     shell:
         """
-        {CT3}
-
         if [[ -s {input.seq} ]]; then
             cenotetaker3 -c {input.seq} \
                 -r cenote_taker3 \
@@ -197,12 +196,10 @@ rule prokka:
         config["resources"]["med_cpu"]
     resources:  
         mem_mb=config["resources"]["med_mem"]
-    #conda:
-        #os.path.join(dir["env"], "prokka.yml")
+    conda:
+        os.path.join(dir["env"], "prokka.yml")
     shell:
         """
-        {PROKKA}
-
         if [[ -s {input.seq} ]]; then
             prokka \
                 --outdir {params.dir} \
@@ -229,12 +226,10 @@ rule phispy:
         config["resources"]["small_cpu"]
     resources:  
         mem_mb=config["resources"]["small_mem"]
-    #conda:
-        #os.path.join(dir["env"], "phispy.yml")
+    conda:
+        os.path.join(dir["env"], "phispy.yml")
     shell:
         """
-        {PHISPY}
-
         if [[ -s {input.gbk} ]]; then
             PhiSpy.py \
                 {input.gbk} \

@@ -1,4 +1,3 @@
-# resources: cpu and memory
 resources:
     big_mem: 128000      
     big_cpu: 16         
@@ -9,14 +8,10 @@ resources:
     small_mem: 16000      
     small_cpu: 4  
 
-tools:
-  cenote_taker3_env: 'eval "$(conda shell.bash hook)"; conda activate /ref/lhlab/software/miniconda3/envs/ct3_env_v3.4.4'
-  prokka_env: 'eval "$(conda shell.bash hook)"; conda activate /ref/lhlab/software/miniconda3/envs/prokka'
-  phispy_env: 'eval "$(conda shell.bash hook)"; conda activate /ref/lhlab/software/miniconda3/envs/phispy_env'
+    tiny_mem: 6000
 
 genomad:
   sensitivity: 7.5
 
 cenote_taker3:
-  database: "/ref/lhlab/data/ct3_DBs"
   settings: "-p T --wrap F --lin_minimum_hallmark_genes 2"

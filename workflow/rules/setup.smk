@@ -64,4 +64,19 @@ rule download_vibrant_db:
         touch {output}
         """
 
-
+rule download_cenote_taker3_db:
+    output:
+        os.path.join(dir["db"], "ct3_db", ".done")
+    params:
+        outdir=os.path.join(dir["db"], "ct3_db")
+    threads:
+        config["resources"]["small_cpu"]
+    resources:  
+        mem_mb=config["resources"]["tiny_mem"]
+    conda:
+        os.path.join(dir["env"], "cenote.yml")
+    shell:
+        """
+        get_ct3_dbs -o {params.outdir} --hmm T --hallmark_tax T --refseq_tax T --mmseqs_cdd T --domain_list T &&
+        touch {output}
+        """

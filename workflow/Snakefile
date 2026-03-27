@@ -14,11 +14,6 @@ RESULTS_DIR = config["results_dir"]
 # get genome names and sequences path
 GENOME, SEQUENCE_MAP = parse_names_and_sequences(METADATA, SEQDIR)
 
-# tools that are not installed through env
-CT3=config["tools"]["cenote_taker3_env"]
-PROKKA=config["tools"]["prokka_env"]
-PHISPY=config["tools"]["phispy_env"]
-
 # rules
 include: "rules/setup.smk"
 include: "rules/prediction.smk"
