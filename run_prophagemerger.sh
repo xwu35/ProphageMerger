@@ -11,3 +11,6 @@ eval "$(conda shell.bash hook)"
 conda activate snakemake
 
 ProphageMerger.py --test_run
+
+# example for your data
+# ProphageMerger.py --genome_info /your/genome_info_table --sequence_dir /directory/containing/sequences -o /output/dir
