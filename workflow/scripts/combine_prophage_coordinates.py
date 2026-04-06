@@ -131,7 +131,7 @@ def process_data(virsorter2, checkv, genomad, vibrant, cenote_prune, cenote_viru
                                 'end': merged_vir_checkv['trim_bp_start'].astype(int) + merged_vir_checkv['end'].astype(int) - 1,
                                 'method': 'VirSorter2 + CheckV'})
     else:
-        column_names = ['seq_name','start','end','method']
+        column_names = ['chr_name','seq_name','start','end','method']
         df_vir_checkv = pd.DataFrame(columns=column_names)
 
     # GeNomad
